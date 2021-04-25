@@ -8,103 +8,12 @@
 
 #import "YMThemeManager.h"
 #import "YMDeviceHelper.h"
-#import "TKWeChatPluginConfig.h"
+#import "YMWeChatPluginConfig.h"
+#import "NSWindow+fuzzy.h"
 
 static const NSString *DEVICE_FINGERPRINT = @"DEVICE_FINGERPRINT";
 static const NSString *DEVICE_THEME_MODE = @"DEVICE_THEME_MODE";
-
-@interface YMThemeManager()
-@property (nonatomic, strong) NSArray *colors;
-@property (nonatomic, copy) NSString *fingerprint;
-@end
-
-@implementation YMThemeManager
-+ (instancetype)shareInstance
-{
-    static id share = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        share = [[self alloc] init];
-    });
-    return share;
-}
-
-- (void)initializeModelConfig
-{
-    if (!self.fingerprint) {
-        self.fingerprint = [YMDeviceHelper deviceFingerprint];
-    }
-    
-    NSDictionary *deviceFingerprint = @{
-        DEVICE_FINGERPRINT : self.fingerprint,
-        DEVICE_FINGERPRINT : [self _modelValue]
-    };
-    
-}
-
-- (NSString *)_modelValue
-{
-    if ([TKWeChatPluginConfig sharedConfig].darkMode) {
-        return @"1";
-    } else if ([TKWeChatPluginConfig sharedConfig].pinkMode) {
-        return @"2";
-    }
-    return @"0";
-}
-
-- (void)changeTheme:(NSView *)view
-{
-    [self changeTheme:view color:kMainBackgroundColor];
-}
-
-- (void)checkSubviewsOf:(NSView *)view
-{
-    // fixe scroller
-    for (NSView* subview in [view subviews]) {
-        if ([subview.className isEqualToString:@"RFOverlayScroller"]) {
-            [self changeTheme:subview color:kMainScrollerColor];
-        }
-        [self checkSubviewsOf:subview];
-    }
-}
-
-- (void)changeTheme:(NSView *)view color:(NSColor *)color
-{
-    // ignore pined image
-    if (view.tag == 9999999) {
-        return;
-    }
-    if (TKWeChatPluginConfig.sharedConfig.usingDarkTheme) {
-        // fix scroller
-        [self checkSubviewsOf:view];
-    }
-    CALayer *viewLayer = [CALayer layer];
-    [viewLayer setBackgroundColor:color.CGColor];
-    [view setWantsLayer:YES];
-    [view setNeedsDisplay:YES];
-    [view setLayer:viewLayer];
-}
-
-- (NSColor *)randomColor:(NSString *)string
-{
-    if (string.length == 0) {
-        return [NSColor whiteColor];
-    }
-    
-    NSRegularExpression *regularExpression = [NSRegularExpression regularExpressionWithPattern:@"[a-zA-Z]" options:0 error:nil];
-    string = [regularExpression stringByReplacingMatchesInString:string options:0 range:NSMakeRange(0, string.length) withTemplate:@""];
-    NSString *subString =  [string substringToIndex:4];
-    int index = subString.intValue % self.colors.count;
-    
-    if (index < self.colors.count) {
-        return self.colors[index];
-    }
-    
-    return [NSColor whiteColor];
-}
-
-- (NSArray *)colors
-{
+static const NSArray *colors() {
     return @[
         kRGBColor(205, 128, 122, 1.0),
         kRGBColor(128, 164, 248, 1.0),
@@ -136,13 +45,144 @@ static const NSString *DEVICE_THEME_MODE = @"DEVICE_THEME_MODE";
     ];
 }
 
+@interface YMThemeManager()
+@property (nonatomic, copy) NSString *fingerprint;
+@property (nonatomic, strong) NSColor *original;
+@end
+
+@implementation YMThemeManager
++ (instancetype)shareInstance
+{
+    static id share = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        share = [[self alloc] init];
+    });
+    return share;
+}
+
+- (void)initializeModelConfig
+{
+    if (!self.fingerprint) {
+        self.fingerprint = [YMDeviceHelper deviceFingerprint];
+    }
+    
+    NSDictionary *deviceFingerprint = @{
+        DEVICE_FINGERPRINT : self.fingerprint,
+        DEVICE_FINGERPRINT : [self _modelValue]
+    };
+    
+}
+
+- (NSString *)_modelValue
+{
+    if ([YMWeChatPluginConfig sharedConfig].darkMode) {
+        return @"1";
+    } else if ([YMWeChatPluginConfig sharedConfig].pinkMode) {
+        return @"2";
+    }
+    return @"0";
+}
+
+- (void)changeTheme:(NSView *)view
+{
+    [self changeTheme:view color:kMainBackgroundColor];
+}
+
+- (void)changeTheme:(NSView *)view color:(NSColor *)color
+{
+    // ignore pined image
+    if (view.tag == 999) {
+        return;
+    }
+
+    CALayer *viewLayer = [CALayer layer];
+    [viewLayer setBackgroundColor:color.CGColor];
+    [view setWantsLayer:YES];
+    [view setNeedsDisplay:YES];
+    [view setLayer:viewLayer];
+}
+
+- (NSColor *)randomColor:(NSString *)string
+{
+    if (string.length == 0) {
+        return [NSColor whiteColor];
+    }
+    
+    NSRegularExpression *regularExpression = [NSRegularExpression regularExpressionWithPattern:@"[a-zA-Z]" options:0 error:nil];
+    string = [regularExpression stringByReplacingMatchesInString:string options:0 range:NSMakeRange(0, string.length) withTemplate:@""];
+    NSString *subString =  [string substringToIndex:4];
+    int index = subString.intValue % colors().count;
+    
+    if (index < colors().count) {
+        return colors()[index];
+    }
+    
+    return [NSColor whiteColor];
+}
+
 + (void)changeButtonTheme:(NSButton *)button
 {
-    if (![TKWeChatPluginConfig sharedConfig].usingDarkTheme) {
+    if (![YMWeChatPluginConfig sharedConfig].usingDarkTheme) {
         return;
     }
     
     NSMutableAttributedString *returnValue = [[NSMutableAttributedString alloc] initWithString:button.title attributes:@{NSForegroundColorAttributeName :[NSColor whiteColor]}];
     button.attributedTitle = returnValue;
+}
+
+#pragma mark - EffectView
++ (NSVisualEffectView *)creatFuzzyEffectView
+{
+    if (!YMWeChatPluginConfig.sharedConfig.fuzzyMode) {
+        return nil;
+    }
+    
+    NSVisualEffectView *effectView = [[NSVisualEffectView alloc] init];
+    effectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    if (@available(macOS 10.11, *)) {
+        effectView.material = NSVisualEffectMaterialDark;
+    } else {
+        // Fallback on earlier versions
+    }
+    effectView.state = NSVisualEffectStateActive;
+    return effectView;
+}
+
++ (void)changeEffectViewMode:(NSVisualEffectView *)effectView
+{
+    if (!YMWeChatPluginConfig.sharedConfig.fuzzyMode) {
+        return;
+    }
+    
+    if (!effectView) {
+        return ;
+    }
+    effectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    if (@available(macOS 10.11, *)) {
+        effectView.material = NSVisualEffectMaterialDark;
+    } else {
+        // Fallback on earlier versions
+    }
+    effectView.state = NSVisualEffectStateActive;
+}
+
+#pragma mark - ChatsCell
+- (void)chatsCellViewAnimation:(MMChatsTableCellView *)cell isSelected:(BOOL)isSelected
+{
+    if (!cell) {
+        return;
+    }
+    
+    if ([YMWeChatPluginConfig sharedConfig].usingTheme) {
+        if (isSelected) {
+            CAKeyframeAnimation *rotationAnimation = [CAKeyframeAnimation animation];
+            rotationAnimation.keyPath = @"transform.rotation";
+            rotationAnimation.duration = 0.15;
+            rotationAnimation.values = @[@(-M_PI_4 /90.0 * 5),@(M_PI_4 /90.0 * 5),@(-M_PI_4 /90.0 * 5)];
+            rotationAnimation.repeatCount = 2;
+            [cell.avatar.layer addAnimation:rotationAnimation forKey:nil];
+        }
+    }
 }
 @end

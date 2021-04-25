@@ -15,16 +15,16 @@
 	<key>CFBundlePackageType</key>
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.5.6</string>
+	<string>2.8.2</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2017年 WeChatExtension. All rights reserved.</string>
+	<string>Copyright © 2019年 WeChatExtension. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string></string>
 	<key>showUpdateWindow</key>
 	<true/>
 	<key>versionInfo</key>
-	<string>v2.5.6(2020-04-26):\n👉🏻  崩溃拦截， 修复收藏中笔记显示BUG，适配2.4.0.149群语音或视频显示，修复公众列表右键点击BUG，茱萸粉皮肤  \n</string>
+	<string>v2.8.2(2021-01-15):\n👉🏻  适配微信v2.6.1(16837)\n👉🏻  群员监控可查看具体违规言论 \n👉🏻  修复2.6以上多选BUG \n👉🏻  祝大家新春快乐 注意疫情 保重🙏\n</string>
 </dict>
 </plist>
